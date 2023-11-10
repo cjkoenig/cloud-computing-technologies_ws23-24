@@ -1,0 +1,43 @@
+---
+ - name: Update packages and setup docker, then start container
+   hosts: dockerhost
+   remote_user: ubuntu
+   become: true
+   
+   vars:
+       user: ubuntu
+   
+   tasks: 
+    - name: Ansible Update Cache and Upgrade all Packages
+      register: updatesys
+      apt:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Display the last line of the previous task to check the stats
+      debug:
+        msg:  "{{updatesys.stdout_lines|last}}"
+
+    - name: Ansible apt install docker.io
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Adding user {{ user }} to group docker
+      user: name={{ user }}
+            groups=docker
+            append=yes
+
+    # TODO
+    #- name: Start the docker container
+    #  community.docker.docker_container:
+    #    name: my-web-app
+    #    image: cjkoenig/page-hit-counter
+
+    - name: Start the docker container (from shell)
+      ansible.builtin.command: docker run --rm --name page-hit-counter -p 80:5000 -d cjkoenig/page-hit-counter
+      become: yes
+        
