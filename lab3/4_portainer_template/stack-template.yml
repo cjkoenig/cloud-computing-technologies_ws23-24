@@ -1,0 +1,101 @@
+---
+version: '3'
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - /home/ubuntu/cloud-computing-technologies_ws23-24/lab3/prometheus:/config
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/config/prometheus.yml"
+    links:
+      - cadvisor:cadvisor
+      - node-exporter:node-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node-exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+      
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+      
+  alertmanager:
+    image: quay.io/prometheus/alertmanager
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - /home/ubuntu/cloud-computing-technologies_ws23-24/lab3/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      
+  blackbox:
+     image: prom/blackbox-exporter:master
+     container_name: blackbox-exporter
+     restart: unless-stopped
+
+     volumes:
+      - /home/ubuntu/cloud-computing-technologies_ws23-24/lab3/prometheus/blackbox.yml:/config/blackbox.yml
+     command: 
+      - "--config.file=/config/blackbox.yml"
+      
+  nginx:
+     image: nginx
+     container_name: nginx
+     restart: unless-stopped
+     ports:
+      - "80:80"
+      - "8080:8080"
+     volumes:
+      - /home/ubuntu/cloud-computing-technologies_ws23-24/lab3/2b_monitor_nginx/nginx-prometheus.conf:/etc/nginx/conf.d/nginx-prometheus.conf
+
+  nginx-exporter:
+     image: nginx/nginx-prometheus-exporter:0.11.0
+     container_name: nginx-exporter
+     restart: unless-stopped
+     ports:
+      - "9113:9113"
+     command: 
+      - "-nginx.scrape-uri=http://nginx:8080/stub_status"
+
+  web-app:
+     image: cjkoenig/page-hit-counter-metrics
+     container_name: web-app
+     restart: unless-stopped
+     ports:
+      - "5000:5000"
