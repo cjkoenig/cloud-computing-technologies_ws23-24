@@ -1,0 +1,13 @@
+namePrefix: test-
+commonLabels:
+  environment: test
+resources:
+- ../../base
+patchesStrategicMerge:
+- image.yaml
+- replica_count.yaml
+configMapGenerator:
+- name: index
+  behavior: replace
+  files:
+  - configs/index.html
